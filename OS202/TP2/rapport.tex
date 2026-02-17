@@ -1,0 +1,147 @@
+\documentclass{article}
+\usepackage{graphicx} 
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{minted}
+\usepackage{amsmath}
+
+\title{OS202 - TP2}
+\author{Helena Guachalla De Andrade}
+\date{February 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Parallélisation ensemble de Mandelbrot}
+
+\subsection{Partition équitable par bloc (mandelbrot.py)}
+
+Le calcul de l'ensemble de Mandelbrot a été parallélisé par une partition équitable par blocs de lignes. Dans cette configuration, chaque processus traite un segment contigu de l'image. Le temps d'exécution retenu pour l'analyse correspond au temps du processus le plus lent.
+
+Le calcul du \textit{speedup} est fait à partir de l'équation:
+
+\[ S = \frac{T_{sequentiel}}{T_{parallele}} \]
+
+\begin{center}
+\begin{tabular}{c c c}
+Nombre de Tâches & Temps d'éxecution (secondes) & \textit{Speedup} \\
+\hline
+1 & 1.592 & - \\
+2 & 0.977 & 1.63 \\
+3 & 0.663 & 2.40 \\
+4 & 0.599 & 2.66
+\end{tabular}
+\end{center}
+
+\subsection{Répartition statique des lignes (mandelbrot\_cyclique.py)}
+
+L'utilisation de cette répartition permet de lisser la charge de travail en distribuant les lignes une à une à chaque processus. Cette stratégie améliore le speedup et l'efficacité globale par rapport au découpage par blocs, au prix d'une légère complexité supplémentaire pour reconstruire l'image.
+
+\begin{center}
+\begin{tabular}{c c c}
+Nombre de Tâches & Temps d'éxecution (secondes) & \textit{Speedup} \\
+\hline
+1 & 1.571 & - \\
+2 & 0.880 & 1.78 \\
+3 & 0.740 & 2,12 \\
+4 & 0.584 & 2,69
+\end{tabular}
+\end{center}
+
+\subsection{Stratégie maître-esclave (mandelbrot\_master.py)}
+
+Cette approche repose sur une distribution dynamique. Le maître distribue des tâches aux esclaves au fur et à mesure de leur disponibilité. C'est la solution la plus efficace pour garantir qu'aucune unité de calcul ne reste inactive, bien qu'elle introduise un surcoût de communication lié aux requêtes entre le maître et les esclaves. 
+
+\subsection{Conclusion}
+
+L'expérience montre que l'efficacité de la parallélisation dépend ici de l'équilibrage de la charge. La répartition cyclique offre le meilleur compromis entre simplicité de mise en œuvre et gain de performance.
+
+\section{Produit matrice-vecteur}
+
+\subsection{Par colonne (matvec\_col.py)}
+
+Dans cette configuration, la matrice est découpée verticalement. Chaque processus effectue le produit de sa bande de colonnes par les éléments correspondants du vecteur. Elle est efficace lorsque la matrice est stockée de manière à favoriser les accès par colonnes.
+
+\subsection{Par ligne (matvec\_ligne.py)}
+
+Le découpage par lignes est souvent plus intuitif : chaque processus est responsable d'un groupe de lignes complètes et produit directement une partie du vecteur final. Le défi réside ici dans la distribution du vecteur d'entrée : chaque processus doit en posséder une copie intégrale. 
+
+\section{Entraînement pour l'examen écrit}
+
+\subsection{Loi d'Amdhal}
+
+La loi d'Amdahl donne l'accélération maximale théorique d'un programme parallèle :
+
+\[S(n) = \frac{1}{(1 - p) + \dfrac{p}{n}}\]
+
+où :
+\begin{itemize}
+    \item $p = 0,9$ est la fraction parallélisable (90\% du temps)
+    \item $n$ est le nombre de nœuds de calcul
+\end{itemize}
+
+Pour $n \gg 1$ (nombre de nœuds très grand), on obtient :
+
+\[
+S_{\text{max}} = \lim_{n \to \infty} S(n) = \frac{1}{1 - p} = \frac{1}{1 - 0,9} = \frac{1}{0,1} = 10
+\]
+
+Le tableau suivant montre l'évolution de l'accélération en fonction du nombre de nœuds :
+
+\begin{center}
+\begin{tabular}{ccc}
+Nombre de nœuds ($n$) & Accélération ($S$) & Efficacité ($S/n$) \\
+\hline
+1 & 1,00 & 100\% \\
+2 & 1,82 & 91\% \\
+4 & 3,08 & 77\% \\
+8 & 4,71 & 59\% \\
+16 & 6,40 & 40\% \\
+32 & 7,27 & 23\% \\
+64 & 7,69 & 12\% \\
+$\infty$ & 10,00 & 0\% \\
+\end{tabular}
+\end{center}
+
+Un nombre raisonnable se situe entre 8 et 16 nœuds.
+
+\subsection{Loi de Gustafson}
+
+La loi de Gustafson (scaling fort) considère que la taille du problème augmente avec les ressources :
+
+\[
+S(n) = n + (1 - n) \cdot s
+\]
+
+où $s$ est la fraction séquentielle.
+
+\subsection*{Avec doublement des données}
+\begin{itemize}
+    \item Fraction séquentielle initiale : $s = 1 - p = 0,1$ (10\%)
+    \item Temps séquentiel initial : $T_s = 0,1T$
+    \item Temps parallèle initial : $T_p = 0,9T$
+\end{itemize}
+
+Avec doublement des données (complexité linéaire) :
+\begin{itemize}
+    \item Temps parallèle devient : $T_p' = 1,8T$
+    \item Temps séquentiel reste : $T_s' = 0,1T$
+    \item Temps total séquentiel : $T' = 0,1T + 1,8T = 1,9T$
+\end{itemize}
+
+Nouvelle fraction séquentielle :
+
+\[
+s' = \frac{T_s'}{T'} = \frac{0,1T}{1,9T} = \frac{0,1}{1,9} \approx 0,0526 \quad (5,26\%)
+\]
+
+Accélération maximale ($n \gg 1$) :
+
+\[
+S_{\text{max}} = \frac{1}{s'} = \frac{1}{0,0526} \approx 19
+\]
+
+Avec doublement des données, l'accélération maximale selon Gustafson est environ 19.
+
+\end{document}
