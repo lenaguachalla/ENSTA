@@ -18,8 +18,7 @@ jobs:
       - name: Compile LaTeX documents
         uses: xu-cheng/latex-action@v3
         with:
-          root_file: |
-            OS202/TP2/rapport.tex
+          root_file: OS202/TP2/rapport.tex
           latexmk_use_xelatex: false
       
       - name: Upload PDFs as artifacts
