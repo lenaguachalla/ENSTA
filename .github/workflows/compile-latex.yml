@@ -1,0 +1,38 @@
+name: LaTeX Compile
+
+on:
+  push:
+    paths:
+      - '**.tex'
+  pull_request:
+    paths:
+      - '**.tex'
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Compile LaTeX documents
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: |
+            OS202/TP2/rapport.tex
+          latexmk_use_xelatex: false
+      
+      - name: Upload PDFs as artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: compiled-pdfs
+          path: OS202/TP2/rapport.pdf
+      
+      - name: Commit PDFs (optional)
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add OS202/TP2/rapport.pdf
+          git commit -m "Auto-compile LaTeX to PDF" || true
+          git push
